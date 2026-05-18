@@ -7,9 +7,9 @@ const normalizePage = (data) => ({
 
 const flowTypeMap = {
   freeze: '任务冻结',
-  unfreeze: '冻结解冻',
+  unfreeze: '冻结返还',
   income: '任务收入',
-  outcome: '任务支付',
+  outcome: '任务支出',
   recharge: '账户充值',
   withdraw: '提现'
 }
@@ -67,6 +67,12 @@ export const accountApi = {
   recharge: (amount) => request.post('/account/recharge', { amount })
 }
 
+export const reviewApi = {
+  getReceived: () => request.get('/reviews/received'),
+  getSent: () => request.get('/reviews/sent'),
+  getTaskReviews: (taskId) => request.get(`/reviews/task/${taskId}`)
+}
+
 export const notificationApi = {
   getList: () => request.get('/notifications').then((data) => ({
     ...normalizePage(data),
@@ -76,12 +82,12 @@ export const notificationApi = {
 }
 
 export const adminApi = {
-  getTasks: () => request.get('/admin/tasks').then(normalizePage),
-  getDisputes: () => request.get('/admin/disputes').then(normalizePage),
-  resolveDispute: (data) => request.post(`/admin/disputes/${data.disputeId || data.taskId}/resolve`, {
-    disputeId: data.disputeId || data.taskId,
-    result: data.result,
-    remark: data.remark
-  }),
+  getTasks: (params = {}) => request.get('/admin/tasks', { params }).then(normalizePage),
+  getDisputes: (params = {}) => request.get('/admin/disputes', { params }).then(normalizePage),
+  getUsers: (params = {}) => request.get('/admin/users', { params }).then(normalizePage),
+  approveTask: (taskId, data = {}) => request.post(`/admin/tasks/${taskId}/approve`, data),
+  takeDownTask: (taskId, data) => request.post(`/admin/tasks/${taskId}/take-down`, data),
+  freezeUser: (userId) => request.post(`/admin/users/${userId}/freeze`),
+  resolveDispute: (disputeId, data) => request.post(`/admin/disputes/${disputeId}/resolve`, data),
   getStatistics: () => request.get('/admin/stats')
 }

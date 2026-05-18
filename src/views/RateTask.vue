@@ -17,28 +17,32 @@ const tags = ref({ timely: true, quality: true, attitude: false })
 const comment = ref('')
 
 const tagOptions = [
-  { key: 'timely', label: '准时完成' },
-  { key: 'quality', label: '质量优秀' },
-  { key: 'attitude', label: '态度友好' }
+  { key: 'timely', label: '按时完成' },
+  { key: 'quality', label: '质量不错' },
+  { key: 'attitude', label: '沟通顺畅' }
 ]
 
-const setRating = (val) => { rating.value = val }
+const ratingText = ['', '很不满意', '不太满意', '一般', '满意', '非常满意']
 
 const targetName = computed(() => {
   if (!task.value) return ''
   return task.value.requesterId === userStore.userId ? '接单方' : '需求方'
 })
 
+const setRating = (val) => {
+  rating.value = val
+}
+
 const handleSubmit = async () => {
   loading.value = true
   try {
     const selectedTags = tagOptions.filter(tag => tags.value[tag.key]).map(tag => tag.label)
-    const content = [comment.value, selectedTags.join('、')].filter(Boolean).join('｜')
+    const content = [comment.value, selectedTags.join('、')].filter(Boolean).join('；')
     await taskApi.rate(route.params.id, { rating: rating.value, comment: content })
-    alert('评价成功！')
-    router.push('/my-tasks')
+    alert('评价提交成功')
+    router.push('/profile')
   } catch (error) {
-    alert(error.response?.data?.message || '评价失败，请重试')
+    alert(error.response?.data?.message || '评价提交失败，请稍后重试')
   } finally {
     loading.value = false
   }
@@ -48,7 +52,7 @@ const loadTask = async () => {
   try {
     task.value = await taskApi.getDetail(route.params.id)
   } catch (error) {
-    alert(error.response?.data?.message || '任务加载失败')
+    alert(error.response?.data?.message || '加载任务失败')
     router.push('/my-tasks')
   }
 }
@@ -58,23 +62,26 @@ onMounted(loadTask)
 
 <template>
   <AppLayout>
-    <div class="max-w-md mx-auto">
-      <div class="mb-8">
-        <h1 class="text-2xl font-semibold text-surface-900">任务评价</h1>
-        <p class="text-surface-500 mt-1">为本次互助体验打分</p>
-      </div>
+    <div class="max-w-xl mx-auto">
+      <section class="page-hero mb-6">
+        <div>
+          <p class="page-kicker">Review</p>
+          <h1 class="text-3xl font-semibold text-surface-950">任务评价</h1>
+          <p class="text-surface-500 mt-2">给{{ targetName || '对方' }}留下本次协作反馈</p>
+        </div>
+      </section>
 
-      <div class="bg-white rounded-xl border border-surface-200 p-8">
+      <section class="surface-panel p-8">
         <div class="text-center mb-8">
-          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-accent-mauve-400 to-accent-mauve-500 flex items-center justify-center mx-auto mb-3 text-white text-xl font-medium">
-            {{ userStore.userInfo?.username?.charAt(0) || 'U' }}
+          <div class="w-16 h-16 rounded-2xl bg-[var(--role-accent)] flex items-center justify-center mx-auto mb-3 text-white text-xl font-semibold shadow-soft">
+            {{ targetName?.charAt(0) || '评' }}
           </div>
-          <h3 class="font-medium text-surface-900">{{ targetName || '对方用户' }}</h3>
-          <p class="text-sm text-surface-500">本次互助对象</p>
+          <h3 class="font-semibold text-surface-950">{{ targetName || '对方' }}</h3>
+          <p class="text-sm text-surface-500 mt-1">{{ task?.title }}</p>
         </div>
 
         <div class="mb-8">
-          <p class="text-sm text-surface-600 text-center mb-3">给本次服务打分</p>
+          <p class="text-sm text-surface-600 text-center mb-3">本次协作体验如何？</p>
           <div class="flex justify-center gap-2">
             <button v-for="star in 5" :key="star" @click="setRating(star)">
               <svg :class="['w-10 h-10 transition-colors', star <= rating ? 'text-amber-400' : 'text-surface-200']" fill="currentColor" viewBox="0 0 24 24">
@@ -82,13 +89,11 @@ onMounted(loadTask)
               </svg>
             </button>
           </div>
-          <p class="text-center text-sm text-surface-500 mt-2">
-            {{ ['', '非常不满意', '不满意', '一般', '满意', '非常满意'][rating] }}
-          </p>
+          <p class="text-center text-sm text-surface-500 mt-2">{{ ratingText[rating] }}</p>
         </div>
 
         <div class="mb-6">
-          <p class="text-sm text-surface-600 mb-3">服务标签（可多选）</p>
+          <p class="text-sm text-surface-600 mb-3">选择评价标签</p>
           <div class="flex flex-wrap gap-2">
             <button
               v-for="tag in tagOptions"
@@ -96,7 +101,7 @@ onMounted(loadTask)
               :class="[
                 'px-4 py-2 rounded-full text-sm font-medium transition-all',
                 tags[tag.key]
-                  ? 'bg-accent-mauve-100 text-accent-mauve-700'
+                  ? 'bg-[var(--role-accent-soft)] text-[var(--role-accent-strong)]'
                   : 'bg-surface-100 text-surface-600'
               ]"
               @click="tags[tag.key] = !tags[tag.key]"
@@ -107,20 +112,15 @@ onMounted(loadTask)
         </div>
 
         <div class="mb-6">
-          <p class="text-sm text-surface-600 mb-1.5">评价留言</p>
-          <textarea
-            v-model="comment"
-            rows="3"
-            class="input resize-none"
-            placeholder="分享您的体验..."
-          />
+          <p class="text-sm text-surface-600 mb-1.5">补充评价</p>
+          <textarea v-model="comment" rows="4" class="input resize-none" placeholder="写下本次任务合作中的具体感受..." />
         </div>
 
         <div class="flex gap-3">
-          <BaseButton variant="secondary" class="flex-1" @click="router.push('/my-tasks')">跳过</BaseButton>
+          <BaseButton variant="secondary" class="flex-1" @click="router.push('/my-tasks')">取消</BaseButton>
           <BaseButton variant="primary" class="flex-1" :loading="loading" @click="handleSubmit">提交评价</BaseButton>
         </div>
-      </div>
+      </section>
     </div>
   </AppLayout>
 </template>

@@ -9,6 +9,7 @@ import com.example.campusmaster.entity.Task;
 import com.example.campusmaster.entity.User;
 import com.example.campusmaster.mapper.DisputeMapper;
 import com.example.campusmaster.mapper.TaskMapper;
+import com.example.campusmaster.mapper.TransactionMapper;
 import com.example.campusmaster.mapper.UserMapper;
 import com.example.campusmaster.service.AccountService;
 import com.example.campusmaster.service.AdminService;
@@ -36,6 +37,9 @@ public class AdminServiceImpl implements AdminService {
 
     @Autowired
     private DisputeMapper disputeMapper;
+
+    @Autowired
+    private TransactionMapper transactionMapper;
 
     @Autowired
     private AccountService accountService;
@@ -68,16 +72,31 @@ public class AdminServiceImpl implements AdminService {
         Long disputedTasks = taskMapper.selectCount(disputedWrapper);
         stats.put("disputedTasks", disputedTasks);
 
-        stats.put("totalAmount", BigDecimal.ZERO);
+        LambdaQueryWrapper<Task> auditWrapper = new LambdaQueryWrapper<>();
+        auditWrapper.eq(Task::getAuditStatus, "pending");
+        stats.put("pendingAuditTasks", taskMapper.selectCount(auditWrapper));
+
+        LambdaQueryWrapper<Dispute> openDisputeWrapper = new LambdaQueryWrapper<>();
+        openDisputeWrapper.eq(Dispute::getStatus, "pending");
+        stats.put("openDisputes", disputeMapper.selectCount(openDisputeWrapper));
+
+        BigDecimal totalAmount = transactionMapper.selectList(null).stream()
+                .filter(transaction -> "income".equals(transaction.getType()) || "outcome".equals(transaction.getType()))
+                .map(transaction -> transaction.getAmount() == null ? BigDecimal.ZERO : transaction.getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        stats.put("totalAmount", totalAmount);
 
         return stats;
     }
 
     @Override
-    public IPage<Task> listTasks(Page<Task> page, String status, String keyword) {
+    public IPage<Task> listTasks(Page<Task> page, String status, String keyword, String auditStatus) {
         LambdaQueryWrapper<Task> wrapper = new LambdaQueryWrapper<>();
         if (status != null && !status.isEmpty()) {
             wrapper.eq(Task::getStatus, status);
+        }
+        if (auditStatus != null && !auditStatus.isEmpty()) {
+            wrapper.eq(Task::getAuditStatus, auditStatus);
         }
         if (keyword != null && !keyword.isEmpty()) {
             wrapper.like(Task::getTitle, keyword);
@@ -158,6 +177,27 @@ public class AdminServiceImpl implements AdminService {
 
     @Override
     @Transactional
+    public boolean approveTask(Long id, Long taskId, String remark) {
+        Task task = taskMapper.selectById(taskId);
+        if (task == null) {
+            throw BusinessException.notFound("任务不存在");
+        }
+
+        task.setAuditStatus("approved");
+        task.setAuditRemark(remark);
+        taskMapper.updateById(task);
+
+        notificationService.sendNotification(
+                task.getRequesterId(), task.getId(), "task_audit",
+                "任务审核通过", "任务《" + task.getTitle() + "》已通过管理员审核"
+        );
+
+        log.info("管理员审核通过任务: adminId={}, taskId={}", id, taskId);
+        return true;
+    }
+
+    @Override
+    @Transactional
     public boolean takeDownTask(Long id, Long taskId, String reason) {
         Task task = taskMapper.selectById(taskId);
         if (task == null) {
@@ -168,7 +208,15 @@ public class AdminServiceImpl implements AdminService {
             accountService.unfreezeAmount(task.getRequesterId(), task.getReward(), taskId);
         }
 
-        taskMapper.deleteById(taskId);
+        task.setAuditStatus("taken_down");
+        task.setAuditRemark(reason);
+        task.setStatus("cancelled");
+        taskMapper.updateById(task);
+
+        notificationService.sendNotification(
+                task.getRequesterId(), task.getId(), "task_audit",
+                "任务已被下架", "任务《" + task.getTitle() + "》因违规被管理员下架，原因：" + reason
+        );
 
         log.info("任务下架成功: taskId={}, reason={}", taskId, reason);
         return true;

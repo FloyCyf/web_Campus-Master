@@ -32,6 +32,12 @@ public class Task {
     @TableField("status")
     private String status;
 
+    @TableField("audit_status")
+    private String auditStatus;
+
+    @TableField("audit_remark")
+    private String auditRemark;
+
     @TableField("deadline")
     private LocalDateTime deadline;
 
@@ -88,6 +94,12 @@ public class Task {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public String getAuditStatus() { return auditStatus; }
+    public void setAuditStatus(String auditStatus) { this.auditStatus = auditStatus; }
+
+    public String getAuditRemark() { return auditRemark; }
+    public void setAuditRemark(String auditRemark) { this.auditRemark = auditRemark; }
 
     public LocalDateTime getDeadline() { return deadline; }
     public void setDeadline(LocalDateTime deadline) { this.deadline = deadline; }

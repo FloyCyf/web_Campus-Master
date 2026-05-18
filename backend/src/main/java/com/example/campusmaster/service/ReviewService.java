@@ -15,5 +15,7 @@ public interface ReviewService {
 
     List<Review> getReviewsByRevieweeId(Long revieweeId);
 
+    List<Review> getReviewsByReviewerId(Long reviewerId);
+
     Integer calculateCreditChange(Integer rating);
 }

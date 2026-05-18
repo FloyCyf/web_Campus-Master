@@ -45,6 +45,22 @@ public class ReviewController {
         return Result.success(reviews);
     }
 
+    @GetMapping("/received")
+    @RequiresRoles({"requester", "helper", "admin"})
+    public Result<Review[]> getReceivedReviews(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Review[] reviews = reviewService.getReviewsByRevieweeId(userId).toArray(new Review[0]);
+        return Result.success(reviews);
+    }
+
+    @GetMapping("/sent")
+    @RequiresRoles({"requester", "helper", "admin"})
+    public Result<Review[]> getSentReviews(HttpServletRequest httpRequest) {
+        Long userId = (Long) httpRequest.getAttribute("userId");
+        Review[] reviews = reviewService.getReviewsByReviewerId(userId).toArray(new Review[0]);
+        return Result.success(reviews);
+    }
+
     public static class CreateReviewRequest {
         @NotNull(message = "任务ID不能为空")
         private Long taskId;

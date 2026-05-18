@@ -1,5 +1,4 @@
-
-CREATE TABLE IF NOT EXISTS `user` (
+﻿CREATE TABLE IF NOT EXISTS `user` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户ID',
     `username` VARCHAR(50) NOT NULL COMMENT '用户名',
     `phone` VARCHAR(20) NOT NULL UNIQUE COMMENT '手机号',
@@ -23,6 +22,8 @@ CREATE TABLE IF NOT EXISTS `task` (
     `reward` DECIMAL(10,2) NOT NULL COMMENT '奖励金额',
     `service_fee` DECIMAL(10,2) NOT NULL COMMENT '服务费',
     `status` VARCHAR(20) NOT NULL COMMENT '任务状态',
+    `audit_status` VARCHAR(20) DEFAULT 'pending' COMMENT '审核状态',
+    `audit_remark` VARCHAR(500) COMMENT '审核备注',
     `deadline` DATETIME NOT NULL COMMENT '截止时间',
     `location` VARCHAR(100) COMMENT '任务地点',
     `contact_info` VARCHAR(50) COMMENT '联系方式',
@@ -37,9 +38,9 @@ CREATE TABLE IF NOT EXISTS `task` (
     INDEX `idx_requester_id` (`requester_id`),
     INDEX `idx_helper_id` (`helper_id`),
     INDEX `idx_status` (`status`),
+    INDEX `idx_audit_status` (`audit_status`),
     INDEX `idx_category` (`category`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务表';
-
 CREATE TABLE IF NOT EXISTS `task_log` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '日志ID',
     `task_id` BIGINT NOT NULL COMMENT '任务ID',
@@ -97,14 +98,16 @@ CREATE TABLE IF NOT EXISTS `notification` (
 
 CREATE TABLE IF NOT EXISTS `review` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '评价ID',
-    `task_id` BIGINT NOT NULL UNIQUE COMMENT '任务ID',
+    `task_id` BIGINT NOT NULL COMMENT '任务ID',
     `reviewer_id` BIGINT NOT NULL COMMENT '评价者ID',
     `reviewee_id` BIGINT NOT NULL COMMENT '被评价者ID',
     `rating` INT NOT NULL COMMENT '评分',
     `content` VARCHAR(500) COMMENT '评价内容',
     `deleted` INT DEFAULT 0 COMMENT '逻辑删除',
     `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    UNIQUE KEY `uk_task_reviewer` (`task_id`, `reviewer_id`),
     INDEX `idx_task_id` (`task_id`),
+    INDEX `idx_reviewer_id` (`reviewer_id`),
     INDEX `idx_reviewee_id` (`reviewee_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='评价表';
 

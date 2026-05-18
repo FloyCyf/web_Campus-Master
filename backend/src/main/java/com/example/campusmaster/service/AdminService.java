@@ -15,13 +15,15 @@ public interface AdminService {
 
     Map<String, Object> getStats();
 
-    IPage<Task> listTasks(Page<Task> page, String status, String keyword);
+    IPage<Task> listTasks(Page<Task> page, String status, String keyword, String auditStatus);
 
     IPage<Dispute> listDisputes(Page<Dispute> page, String status);
 
     IPage<User> listUsers(Page<User> page, String role, String keyword);
 
     boolean resolveDispute(Long id, Long disputeId, String result, String remark);
+
+    boolean approveTask(Long id, Long taskId, String remark);
 
     boolean takeDownTask(Long id, Long taskId, String reason);
 

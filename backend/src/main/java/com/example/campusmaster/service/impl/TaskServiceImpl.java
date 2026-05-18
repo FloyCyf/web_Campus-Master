@@ -68,6 +68,7 @@ public class TaskServiceImpl implements TaskService {
         task.setReward(reward);
         task.setServiceFee(serviceFee);
         task.setStatus("pending");
+        task.setAuditStatus("pending");
         task.setDeadline(request.getDeadline());
         task.setLocation(request.getLocation());
         task.setContactInfo(request.getContactInfo());
@@ -312,6 +313,11 @@ public class TaskServiceImpl implements TaskService {
             throw BusinessException.forbidden("无权评价此任务");
         }
 
+        Review existingReview = reviewMapper.selectByTaskIdAndReviewerId(taskId, userId);
+        if (existingReview != null) {
+            throw BusinessException.conflict("你已经评价过该任务");
+        }
+
         Review review = new Review();
         review.setTaskId(taskId);
         review.setReviewerId(userId);
@@ -321,6 +327,11 @@ public class TaskServiceImpl implements TaskService {
         reviewMapper.insert(review);
 
         userService.updateCreditScore(targetUserId, rating >= 4 ? 2 : (rating >= 3 ? 0 : -2));
+
+        notificationService.sendNotification(
+                targetUserId, taskId, "review_received",
+                "收到新的评价", "任务《" + task.getTitle() + "》收到了新的评价，评分：" + rating + "星"
+        );
 
         saveTaskLog(taskId, userId, "rate", "评价任务", "completed", "completed");
 

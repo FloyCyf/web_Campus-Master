@@ -23,10 +23,10 @@ const props = defineProps({
 })
 
 const variantClasses = {
-  primary: 'bg-accent-mauve-600 text-white hover:bg-accent-mauve-700 active:bg-accent-mauve-800 disabled:bg-surface-300',
-  secondary: 'bg-surface-100 text-surface-700 hover:bg-surface-200 active:bg-surface-300 disabled:bg-surface-100 disabled:text-surface-400',
-  outline: 'border border-surface-300 text-surface-700 hover:bg-surface-50 active:bg-surface-100 disabled:border-surface-200 disabled:text-surface-400',
-  ghost: 'text-surface-600 hover:bg-surface-100 active:bg-surface-200 disabled:text-surface-400',
+  primary: 'bg-[var(--role-accent)] text-white shadow-soft hover:brightness-95 active:brightness-90 disabled:bg-surface-300',
+  secondary: 'bg-white text-surface-700 border border-surface-200 hover:bg-surface-50 active:bg-surface-100 disabled:bg-surface-100 disabled:text-surface-400',
+  outline: 'border border-[var(--role-accent)] text-[var(--role-accent)] bg-white hover:bg-[var(--role-accent-soft)] active:bg-surface-100 disabled:border-surface-200 disabled:text-surface-400',
+  ghost: 'text-surface-600 hover:bg-white/70 active:bg-surface-100 disabled:text-surface-400',
   danger: 'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 disabled:bg-surface-300',
   success: 'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 disabled:bg-surface-300'
 }
