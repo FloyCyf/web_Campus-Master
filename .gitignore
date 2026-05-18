@@ -1,0 +1,16 @@
+node_modules/
+dist/
+
+backend/target/
+
+.env
+.env.*
+backend/src/main/resources/application-local.yml
+*.log
+
+.idea/
+.vscode/
+
+*.class
+*.jar
+*.war
