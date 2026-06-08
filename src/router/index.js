@@ -91,7 +91,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const userInfo = localStorage.getItem('userInfo')
+  const userInfo = sessionStorage.getItem('userInfo')
   const user = userInfo ? JSON.parse(userInfo) : null
 
   if (to.meta.requiresAuth && !user) {

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { taskApi } from '@/api'
@@ -13,6 +13,8 @@ const userStore = useUserStore()
 const loading = ref(true)
 const activeTab = ref(userStore.role === 'helper' ? 'accepted' : 'published')
 const filterStatus = ref('all')
+const lastUpdate = ref('')
+let refreshTimer = null
 
 const statusOptions = [
   { value: 'all', label: '全部' },
@@ -104,10 +106,24 @@ const loadTasks = async () => {
     ])
     publishedTasks.value = publishedData.list || []
     acceptedTasks.value = acceptedData.list || []
+    lastUpdate.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   } catch (error) {
     console.error('加载任务失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const startAutoRefresh = () => {
+  refreshTimer = setInterval(() => {
+    loadTasks()
+  }, 30000)
+}
+
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
   }
 }
 
@@ -117,7 +133,12 @@ watch(tabs, (value) => {
   }
 })
 
-onMounted(loadTasks)
+onMounted(() => {
+  loadTasks()
+  startAutoRefresh()
+})
+
+onUnmounted(stopAutoRefresh)
 </script>
 
 <template>

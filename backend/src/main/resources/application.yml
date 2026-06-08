@@ -6,7 +6,7 @@ spring:
     url: ${DB_URL:jdbc:mysql://localhost:3306/campus_master?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai}
     username: ${DB_USERNAME:root}
     # ⚠️ 启动前请设置环境变量 DB_PASSWORD=<你的 MySQL 密码>，或在下方默认值中填入（仅限本地开发，勿提交到公开仓库）
-    password: ${DB_PASSWORD:'Zdx962436510！'}
+    password: ${DB_PASSWORD:Zdx962436510!}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jackson:

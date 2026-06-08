@@ -21,6 +21,11 @@ const textareaRef = ref(null)
 
 const otherUser = ref(null)
 
+// 判断是否是自己发送的消息（确保类型一致）
+const isMyMessage = (msg) => {
+  return Number(msg.senderId) === Number(userStore.userId)
+}
+
 const formatTime = (dateStr) => {
   const date = new Date(dateStr)
   return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -116,7 +121,7 @@ onUnmounted(() => {
 
 <template>
   <AppLayout>
-    <div class="max-w-2xl mx-auto h-[calc(100vh-8rem)] flex flex-col">
+    <div class="max-w-3xl mx-auto h-[calc(100vh-8rem)] flex flex-col w-full">
       <!-- Header -->
       <div class="flex items-center gap-3 mb-4">
         <button class="flex items-center text-surface-500 hover:text-surface-700" @click="router.back()">
@@ -138,7 +143,7 @@ onUnmounted(() => {
       <!-- Chat Area -->
       <div
         ref="chatContainer"
-        class="flex-1 bg-white rounded-xl border border-surface-200 overflow-y-auto p-4 space-y-4"
+        class="flex-1 bg-white rounded-xl border border-surface-200 overflow-y-auto p-6 space-y-4 w-full"
       >
         <div v-if="loading" class="flex items-center justify-center py-10">
           <div class="animate-spin w-6 h-6 border-2 border-accent-mauve-600 border-t-transparent rounded-full"></div>
@@ -151,28 +156,36 @@ onUnmounted(() => {
         <div
           v-for="msg in messages"
           :key="msg.id"
-          :class="[
-            'flex',
-            msg.senderId === userStore.userId ? 'justify-end' : 'justify-start'
-          ]"
+          class="flex w-full gap-3 mb-3"
+          :style="isMyMessage(msg) ? 'justify-content: flex-end;' : 'justify-content: flex-start;'"
         >
+          <div v-if="!isMyMessage(msg)" 
+               class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium shrink-0 bg-surface-200 text-surface-600">
+            {{ otherUser?.username?.charAt(0) || '他' }}
+          </div>
+          
           <div
             :class="[
-              'max-w-[75%] px-4 py-2.5 rounded-2xl text-sm',
-              msg.senderId === userStore.userId
-                ? 'bg-accent-mauve-600 text-white rounded-br-md'
-                : 'bg-surface-100 text-surface-800 rounded-bl-md'
+              'max-w-[65%] px-4 py-2.5 rounded-2xl text-sm',
+              isMyMessage(msg)
+                ? 'bg-accent-mauve-600 text-white rounded-tr-sm'
+                : 'bg-surface-100 text-surface-800 rounded-tl-sm'
             ]"
           >
-            <p class="whitespace-pre-wrap">{{ msg.content }}</p>
+            <p class="whitespace-pre-wrap break-words leading-relaxed">{{ msg.content }}</p>
             <p
               :class="[
-                'text-[10px] mt-1 text-right',
-                msg.senderId === userStore.userId ? 'text-white/70' : 'text-surface-400'
+                'text-[10px] mt-1.5',
+                isMyMessage(msg) ? 'text-white/70 text-right' : 'text-surface-400 text-left'
               ]"
             >
               {{ formatTime(msg.createTime) }}
             </p>
+          </div>
+          
+          <div v-if="isMyMessage(msg)" 
+               class="w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium shrink-0 bg-accent-mauve-100 text-accent-mauve-600">
+            {{ userStore.username?.charAt(0) || '我' }}
           </div>
         </div>
       </div>

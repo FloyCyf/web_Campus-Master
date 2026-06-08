@@ -21,7 +21,7 @@ export const useUserStore = defineStore('user', () => {
     role.value = data.role
     creditScore.value = data.creditScore
     token.value = data.token
-    localStorage.setItem('userInfo', JSON.stringify({
+    sessionStorage.setItem('userInfo', JSON.stringify({
       userId: data.userId,
       username: data.username,
       phone: data.phone,
@@ -29,7 +29,7 @@ export const useUserStore = defineStore('user', () => {
       creditScore: data.creditScore,
       token: data.token
     }))
-    localStorage.setItem('token', data.token)
+    sessionStorage.setItem('token', data.token)
   }
 
   const logout = () => {
@@ -42,8 +42,8 @@ export const useUserStore = defineStore('user', () => {
     balance.value = 0
     frozenBalance.value = 0
     unreadCount.value = 0
-    localStorage.removeItem('userInfo')
-    localStorage.removeItem('token')
+    sessionStorage.removeItem('userInfo')
+    sessionStorage.removeItem('token')
   }
 
   const setAccount = (data) => {
@@ -56,7 +56,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const loadFromStorage = () => {
-    const userInfo = localStorage.getItem('userInfo')
+    const userInfo = sessionStorage.getItem('userInfo')
     if (userInfo) {
       const data = JSON.parse(userInfo)
       userId.value = data.userId

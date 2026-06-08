@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { taskApi } from '@/api'
@@ -14,6 +14,8 @@ const loading = ref(true)
 const searchQuery = ref('')
 const selectedCategory = ref('all')
 const tasks = ref([])
+const lastUpdate = ref('')
+let refreshTimer = null
 
 const categories = [
   { value: 'all', label: '全部' },
@@ -65,6 +67,7 @@ const loadTasks = async () => {
   try {
     const data = await taskApi.getList()
     tasks.value = data.records || data.list || []
+    lastUpdate.value = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   } catch (error) {
     console.error('加载任务列表失败:', error)
   } finally {
@@ -72,7 +75,25 @@ const loadTasks = async () => {
   }
 }
 
-onMounted(loadTasks)
+const startAutoRefresh = () => {
+  refreshTimer = setInterval(() => {
+    loadTasks()
+  }, 30000)
+}
+
+const stopAutoRefresh = () => {
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+}
+
+onMounted(() => {
+  loadTasks()
+  startAutoRefresh()
+})
+
+onUnmounted(stopAutoRefresh)
 </script>
 
 <template>
