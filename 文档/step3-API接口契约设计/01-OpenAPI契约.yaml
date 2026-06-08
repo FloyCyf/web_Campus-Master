@@ -1,0 +1,671 @@
+openapi: 3.0.3
+info:
+  title: 校园万事达 API
+  description: |
+    校园互助众包任务平台 - RESTful API 文档 v2.0
+
+    **修订说明**（基于 v1.0 差异审计）：
+    - 路径前缀 `/api/v1/` → `/api/`（采纳代码值）
+    - 字段名 `frozenAmount` → `frozenBalance`（对齐代码）
+    - 字段名 `fromUserId/toUserId` → `reviewerId/revieweeId`（对齐代码）
+    - 流水类型 `payment/refund` → `outcome`（对齐代码）
+    - 删除 `email/verifyCode/refreshToken/withdraw/logout`（本期不做）
+    - 错误码体系保留但仅作参考（实现暂用通用 400/401/403/404/409）
+
+    完整差异审计见 `02-Controller与契约差异审计表.md`
+  version: 2.0.0
+  license:
+    name: 课程设计
+    url: https://example.com
+
+servers:
+  - url: http://localhost:8080
+    description: 本地开发
+  - url: https://api.campus-master.example
+    description: 生产环境（示例）
+
+security:
+  - bearer-jwt: []
+
+tags:
+  - name: 用户模块
+    description: 用户注册、登录、个人信息
+  - name: 任务模块
+    description: 任务全生命周期管理
+  - name: 账户模块
+    description: 充值、流水、冻结
+  - name: 通知模块
+    description: 实时通知与已读管理
+  - name: 评价模块
+    description: 双向互评
+  - name: 管理员模块
+    description: 任务审核、争议处理、用户管理
+
+paths:
+  # ========== 用户模块 ==========
+  /api/auth/register:
+    post:
+      tags: [用户模块]
+      summary: 用户注册
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: 手机号已注册 / 参数错误
+
+  /api/auth/login:
+    post:
+      tags: [用户模块]
+      summary: 用户登录
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: 手机号或密码错误
+
+  /api/auth/me:
+    get:
+      tags: [用户模块]
+      summary: 获取当前用户信息
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  /api/auth/users/{id}:
+    get:
+      tags: [用户模块]
+      summary: 按 ID 查询用户
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: 用户不存在
+
+  # ========== 任务模块 ==========
+  /api/tasks:
+    get:
+      tags: [任务模块]
+      summary: 任务列表（分页）
+      parameters:
+        - name: pageNum
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 10 }
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, ongoing, pending_review, completed, disputed, cancelled]
+        - name: category
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageTask'
+    post:
+      tags: [任务模块]
+      summary: 发布任务
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '200':
+          description: 任务 ID
+          content:
+            application/json:
+              schema:
+                type: integer
+                format: int64
+
+  /api/tasks/{id}:
+    get:
+      tags: [任务模块]
+      summary: 任务详情
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /api/tasks/my/{type}:
+    get:
+      tags: [任务模块]
+      summary: 我的任务
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [published, accepted]
+        - name: pageNum
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: 成功
+
+  /api/tasks/{id}/accept:
+    post:
+      tags: [任务模块]
+      summary: 接单
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: 接单成功 }
+        '409': { description: 任务已被接单 / 状态不允许接单 }
+
+  /api/tasks/{id}/submit:
+    post:
+      tags: [任务模块]
+      summary: 提交完成凭证
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                proofImages: { type: string, description: "凭证文字或图片URL" }
+      responses:
+        '200': { description: 提交成功 }
+        '409': { description: 任务状态不允许提交 }
+
+  /api/tasks/{id}/complete:
+    post:
+      tags: [任务模块]
+      summary: 验收任务（资金结算）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: 验收完成，资金已结算 }
+        '409': { description: 任务状态不允许验收 }
+
+  /api/tasks/{id}/dispute:
+    post:
+      tags: [任务模块]
+      summary: 发起争议
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { description: 已发起争议 }
+
+  /api/tasks/{id}/cancel:
+    post:
+      tags: [任务模块]
+      summary: 取消任务
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: 任务已取消，资金解冻 }
+        '409': { description: 任务状态不允许取消 }
+
+  /api/tasks/{id}/rate:
+    post:
+      tags: [任务模块]
+      summary: 评价任务
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                comment: { type: string }
+      responses:
+        '200': { description: 评价成功 }
+        '409': { description: 任务未完成，无法评价 }
+
+  # ========== 账户模块 ==========
+  /api/account:
+    get:
+      tags: [账户模块]
+      summary: 查询账户信息
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+
+  /api/account/transactions:
+    get:
+      tags: [账户模块]
+      summary: 流水记录
+      parameters:
+        - name: pageNum
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: pageSize
+          in: query
+          schema: { type: integer, default: 10 }
+      responses:
+        '200':
+          description: 成功
+
+  /api/account/recharge:
+    post:
+      tags: [账户模块]
+      summary: 账户充值（模拟）
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                amount: { type: number, format: decimal }
+      responses:
+        '200': { description: 充值成功 }
+
+  # ========== 通知模块 ==========
+  /api/notifications:
+    get:
+      tags: [通知模块]
+      summary: 通知列表
+      responses:
+        '200': { description: 成功 }
+
+  /api/notifications/unread-count:
+    get:
+      tags: [通知模块]
+      summary: 未读数
+      responses:
+        '200': { description: 成功 }
+
+  /api/notifications/{id}/read:
+    put:
+      tags: [通知模块]
+      summary: 标记已读
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: 成功 }
+
+  /api/notifications/read-all:
+    put:
+      tags: [通知模块]
+      summary: 全部已读
+      responses:
+        '200': { description: 成功 }
+
+  # ========== 评价模块 ==========
+  /api/reviews:
+    post:
+      tags: [评价模块]
+      summary: 发布评价
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReviewRequest'
+      responses:
+        '200': { description: 成功 }
+
+  /api/reviews/task/{taskId}:
+    get:
+      tags: [评价模块]
+      summary: 任务的评价列表
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: 成功 }
+
+  /api/reviews/received:
+    get:
+      tags: [评价模块]
+      summary: 我收到的评价
+      responses:
+        '200': { description: 成功 }
+
+  /api/reviews/sent:
+    get:
+      tags: [评价模块]
+      summary: 我发出的评价
+      responses:
+        '200': { description: 成功 }
+
+  # ========== 管理员模块 ==========
+  /api/admin/stats:
+    get:
+      tags: [管理员模块]
+      summary: 平台统计
+      responses:
+        '200': { description: 成功 }
+
+  /api/admin/tasks:
+    get:
+      tags: [管理员模块]
+      summary: 任务列表（管理员视角）
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string }
+        - name: keyword
+          in: query
+          schema: { type: string }
+        - name: auditStatus
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: 成功 }
+
+  /api/admin/disputes:
+    get:
+      tags: [管理员模块]
+      summary: 争议列表
+      responses:
+        '200': { description: 成功 }
+
+  /api/admin/users:
+    get:
+      tags: [管理员模块]
+      summary: 用户列表
+      parameters:
+        - name: role
+          in: query
+          schema: { type: string }
+        - name: keyword
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { description: 成功 }
+
+  /api/admin/disputes/{id}/resolve:
+    post:
+      tags: [管理员模块]
+      summary: 处理争议
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                result: { type: string, enum: [approve, reject] }
+                remark: { type: string }
+      responses:
+        '200': { description: 申诉处理完成 }
+
+  /api/admin/tasks/{id}/approve:
+    post:
+      tags: [管理员模块]
+      summary: 审核通过任务
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remark: { type: string }
+      responses:
+        '200': { description: 审核通过 }
+
+  /api/admin/tasks/{id}/take-down:
+    post:
+      tags: [管理员模块]
+      summary: 下架任务
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { description: 任务已下架 }
+
+  /api/admin/users/{id}/freeze:
+    post:
+      tags: [管理员模块]
+      summary: 冻结用户
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200': { description: 用户已冻结 }
+
+# ========== Schema 定义 ==========
+components:
+  securitySchemes:
+    bearer-jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      in: header
+      name: Authorization
+
+  schemas:
+    Result:
+      type: object
+      properties:
+        code: { type: integer, example: 200 }
+        message: { type: string, example: 操作成功 }
+        data: {}
+
+    User:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string }
+        phone: { type: string }
+        role:
+          type: string
+          enum: [requester, helper, admin]
+        creditScore: { type: integer, example: 100, minimum: 0, maximum: 150 }
+        status: { type: integer, example: 1, description: "1正常 0冻结" }
+        createTime: { type: string, format: date-time }
+        updateTime: { type: string, format: date-time }
+
+    LoginRequest:
+      type: object
+      required: [phone, password]
+      properties:
+        phone: { type: string, pattern: "^1[3-9]\\d{9}$" }
+        password: { type: string, minLength: 6 }
+
+    RegisterRequest:
+      type: object
+      required: [username, phone, password, role]
+      properties:
+        username: { type: string, minLength: 2, maxLength: 20 }
+        phone: { type: string, pattern: "^1[3-9]\\d{9}$" }
+        password: { type: string, minLength: 6 }
+        role:
+          type: string
+          enum: [requester, helper]
+
+    LoginResponse:
+      type: object
+      properties:
+        token: { type: string, description: "JWT Token" }
+        userId: { type: integer, format: int64 }
+        username: { type: string }
+        phone: { type: string }
+        role: { type: string }
+        creditScore: { type: integer }
+
+    Task:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        title: { type: string }
+        description: { type: string }
+        category: { type: string, enum: [delivery, food, print, other] }
+        reward: { type: number, format: decimal }
+        serviceFee: { type: number, format: decimal }
+        status:
+          type: string
+          enum: [pending, ongoing, pending_review, completed, disputed, cancelled]
+        auditStatus: { type: string, enum: [pending, approved, taken_down] }
+        auditRemark: { type: string }
+        deadline: { type: string, format: date-time }
+        location: { type: string }
+        contactInfo: { type: string }
+        viewCount: { type: integer }
+        requesterId: { type: integer, format: int64 }
+        helperId: { type: integer, format: int64 }
+        proofImages: { type: string }
+        createTime: { type: string, format: date-time }
+        updateTime: { type: string, format: date-time }
+
+    CreateTaskRequest:
+      type: object
+      required: [title, category, reward, deadline]
+      properties:
+        title: { type: string, maxLength: 50 }
+        description: { type: string }
+        category: { type: string, enum: [delivery, food, print, other] }
+        reward: { type: number, format: decimal, minimum: 0.01 }
+        deadline: { type: string, format: date-time }
+        location: { type: string }
+        contactInfo: { type: string }
+
+    Account:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        balance: { type: number, format: decimal, description: "可用余额" }
+        frozenBalance: { type: number, format: decimal, description: "冻结金额" }
+        # ⚠️ 字段名 frozenBalance 而非 v1 文档的 frozenAmount
+
+    Transaction:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        userId: { type: integer, format: int64 }
+        taskId: { type: integer, format: int64 }
+        type:
+          type: string
+          enum: [recharge, freeze, unfreeze, income, outcome]
+          # ⚠️ v1 文档的 payment/refund 已合并为 outcome
+        amount: { type: number, format: decimal }
+        description: { type: string }
+        beforeBalance: { type: number, format: decimal }
+        afterBalance: { type: number, format: decimal }
+        createTime: { type: string, format: date-time }
+
+    CreateReviewRequest:
+      type: object
+      required: [taskId, revieweeId, rating]
+      properties:
+        taskId: { type: integer, format: int64 }
+        revieweeId: { type: integer, format: int64 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        content: { type: string, maxLength: 500 }
+
+    PageTask:
+      type: object
+      properties:
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/Task' }
+        total: { type: integer }
+        size: { type: integer }
+        current: { type: integer }
+        pages: { type: integer }
