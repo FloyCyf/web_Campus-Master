@@ -141,21 +141,23 @@ const handleLogin = async () => {
       <div class="mt-6 p-4 bg-surface-100 rounded-xl">
         <p class="text-xs text-surface-500 text-center mb-2">测试账号</p>
         <div class="grid grid-cols-3 gap-2 text-xs">
-          <div class="bg-white rounded-lg p-2 text-center">
-            <p class="font-medium text-surface-700">需求方</p>
-            <p class="text-surface-500">13800000001</p>
+            <div class="bg-white rounded-lg p-2 text-center">
+              <p class="font-medium text-surface-700">需求方</p>
+              <p class="text-surface-500">13800000001</p>
+              <p class="text-surface-500">123456</p>
+            </div>
+            <div class="bg-white rounded-lg p-2 text-center">
+              <p class="font-medium text-surface-700">接单方</p>
+              <p class="text-surface-500">13800000002</p>
+              <p class="text-surface-500">123456</p>
+            </div>
+            <div class="bg-white rounded-lg p-2 text-center">
+              <p class="font-medium text-surface-700">管理员</p>
+              <p class="text-surface-500">13800000000</p>
+              <p class="text-surface-500">123456</p>
+            </div>
           </div>
-          <div class="bg-white rounded-lg p-2 text-center">
-            <p class="font-medium text-surface-700">接单方</p>
-            <p class="text-surface-500">13800000003</p>
-          </div>
-          <div class="bg-white rounded-lg p-2 text-center">
-            <p class="font-medium text-surface-700">管理员</p>
-            <p class="text-surface-500">13800000000</p>
-          </div>
-        </div>
-        <p class="text-xs text-surface-400 text-center mt-2">需求方/接单方密码：123456</p>
-        <p class="text-xs text-surface-400 text-center">管理员密码：Admin123</p>
+        <p class="text-xs text-surface-400 text-center mt-2">使用 data.sql 脚本初始化数据库后即可登录</p>
       </div>
     </div>
   </div>

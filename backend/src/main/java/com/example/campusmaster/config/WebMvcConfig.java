@@ -35,6 +35,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/auth/login",
                         "/api/auth/register",
                         "/api/auth/users/**",
+                        "/api/init/**",
                         "/error"
                 );
 
@@ -44,6 +45,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/auth/login",
                         "/api/auth/register",
                         "/api/auth/users/**",
+                        "/api/init/**",
                         "/error"
                 );
     }

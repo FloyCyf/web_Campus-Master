@@ -81,6 +81,14 @@ export const notificationApi = {
   markRead: () => request.put('/notifications/read-all')
 }
 
+export const messageApi = {
+  getMessages: (taskId) => request.get(`/messages/task/${taskId}`),
+  sendMessage: (taskId, content) => request.post(`/messages/task/${taskId}`, { content }),
+  getUnreadCount: () => request.get('/messages/unread-count'),
+  markRead: (taskId) => request.post(`/messages/task/${taskId}/read`),
+  getConversations: () => request.get('/messages/conversations')
+}
+
 export const adminApi = {
   getTasks: (params = {}) => request.get('/admin/tasks', { params }).then(normalizePage),
   getDisputes: (params = {}) => request.get('/admin/disputes', { params }).then(normalizePage),

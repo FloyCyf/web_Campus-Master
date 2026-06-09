@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS `user` (
+CREATE TABLE IF NOT EXISTS `user` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '用户ID',
     `username` VARCHAR(50) NOT NULL COMMENT '用户名',
     `phone` VARCHAR(20) NOT NULL UNIQUE COMMENT '手机号',
@@ -127,3 +127,18 @@ CREATE TABLE IF NOT EXISTS `dispute` (
     INDEX `idx_task_id` (`task_id`),
     INDEX `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='争议表';
+
+CREATE TABLE IF NOT EXISTS `message` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '消息ID',
+    `task_id` BIGINT NOT NULL COMMENT '任务ID',
+    `sender_id` BIGINT NOT NULL COMMENT '发送者ID',
+    `receiver_id` BIGINT NOT NULL COMMENT '接收者ID',
+    `content` VARCHAR(1000) NOT NULL COMMENT '消息内容',
+    `is_read` INT DEFAULT 0 COMMENT '是否已读',
+    `deleted` INT DEFAULT 0 COMMENT '逻辑删除',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX `idx_task_id` (`task_id`),
+    INDEX `idx_sender_id` (`sender_id`),
+    INDEX `idx_receiver_id` (`receiver_id`),
+    INDEX `idx_receiver_read` (`receiver_id`, `is_read`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天消息表';

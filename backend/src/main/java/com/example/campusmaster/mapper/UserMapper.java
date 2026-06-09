@@ -17,4 +17,10 @@ public interface UserMapper extends BaseMapper<User> {
      */
     @Select("SELECT * FROM user WHERE phone = #{phone} AND deleted = 0")
     User selectByPhone(String phone);
+
+    /**
+     * 删除所有用户（物理删除，绕过逻辑删除）
+     */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM user")
+    void deleteAll();
 }

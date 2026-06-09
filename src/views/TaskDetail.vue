@@ -39,6 +39,11 @@ const canRate = () => {
   return task.value.status === 'completed'
 }
 
+const canChat = () => {
+  if (!task.value) return false
+  return task.value.helperId !== null && task.value.helperId !== undefined && task.value.status !== 'pending' && task.value.status !== 'cancelled'
+}
+
 const handleAccept = async () => {
   if (!canAccept()) return
   
@@ -176,6 +181,10 @@ onMounted(() => {
             
             <BaseButton v-if="canRate()" variant="secondary" block @click="router.push(`/rate/${task.id}`)">
               评价对方
+            </BaseButton>
+
+            <BaseButton v-if="canChat()" variant="outline" block @click="router.push(`/chat/${task.id}`)">
+              发消息
             </BaseButton>
           </div>
 

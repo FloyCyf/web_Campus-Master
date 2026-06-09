@@ -70,6 +70,18 @@ const routes = [
     name: 'Admin',
     component: () => import('@/views/Admin.vue'),
     meta: { requiresAuth: true, roles: ['admin'] }
+  },
+  {
+    path: '/chat/:taskId',
+    name: 'Chat',
+    component: () => import('@/views/Chat.vue'),
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/messages',
+    name: 'Messages',
+    component: () => import('@/views/Messages.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -79,7 +91,7 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const userInfo = localStorage.getItem('userInfo')
+  const userInfo = sessionStorage.getItem('userInfo')
   const user = userInfo ? JSON.parse(userInfo) : null
 
   if (to.meta.requiresAuth && !user) {

@@ -63,6 +63,7 @@ public class SecurityConfig {
             // 配置请求权限
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/login", "/api/auth/register").permitAll()
+                .requestMatchers("/api/init/**").permitAll()
                 .requestMatchers("/api/tasks/list", "/api/tasks/detail/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()

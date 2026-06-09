@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { notificationApi } from '@/api'
+import { notificationApi, messageApi, taskApi } from '@/api'
+import { onMessageReceived, offMessageReceived } from '@/utils/websocket'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,6 +12,8 @@ const userStore = useUserStore()
 const showUserMenu = ref(false)
 const showNotification = ref(false)
 const notifications = ref([])
+const chatMessages = ref([])
+const taskCache = ref({})
 
 const roleMeta = computed(() => {
   const map = {
@@ -28,12 +31,28 @@ const navLinks = computed(() => {
 
   const links = [
     { path: '/home', label: userStore.role === 'helper' ? '任务广场' : '任务大厅' },
-    { path: '/my-tasks', label: userStore.role === 'helper' ? '我的接单' : '我的任务' }
+    { path: '/my-tasks', label: userStore.role === 'helper' ? '我的接单' : '我的任务' },
+    { path: '/messages', label: '消息' }
   ]
   if (userStore.role === 'requester' || userStore.role === 'admin') {
     links.push({ path: '/publish', label: '发布任务' })
   }
   return links
+})
+
+const allNotifications = computed(() => {
+  const all = [
+    ...notifications.value.map(n => ({ ...n, type: n.type || 'system' })),
+    ...chatMessages.value.map(m => ({ 
+      ...m, 
+      id: 'chat_' + m.id,
+      type: 'chat',
+      title: m.otherUsername || '新消息',
+      content: m.content,
+      isRead: m.isRead ? 1 : 0
+    }))
+  ]
+  return all.sort((a, b) => new Date(b.createTime || b.time) - new Date(a.createTime || a.time))
 })
 
 const isActive = (path) => {
@@ -46,6 +65,7 @@ const notificationTone = (type) => {
   if (type === 'task_submitted') return 'bg-blue-100 text-blue-600'
   if (type === 'review_received') return 'bg-rose-100 text-rose-600'
   if (type === 'dispute_created') return 'bg-amber-100 text-amber-600'
+  if (type === 'chat') return 'bg-accent-mauve-100 text-accent-mauve-600'
   return 'bg-surface-100 text-surface-500'
 }
 
@@ -67,9 +87,37 @@ const goToAdmin = () => {
 const loadNotifications = async () => {
   if (!userStore.userId) return
   try {
-    const data = await notificationApi.getList()
-    notifications.value = data.list || []
-    userStore.setUnreadCount(data.unreadCount || 0)
+    const [notifData, msgData, convData] = await Promise.all([
+      notificationApi.getList(),
+      messageApi.getUnreadCount(),
+      messageApi.getConversations()
+    ])
+    notifications.value = notifData.list || []
+    
+    const taskIds = [...new Set((convData || []).map(m => m.taskId))]
+    const taskPromises = taskIds.map(id => taskApi.getDetail(id).catch(() => null))
+    const taskResults = await Promise.all(taskPromises)
+    taskResults.forEach(task => {
+      if (task) {
+        taskCache.value[task.id] = task
+      }
+    })
+    
+    const grouped = {}
+    (convData || []).forEach(msg => {
+      const task = taskCache.value[msg.taskId]
+      if (task) {
+        const isRequester = task.requesterId === userStore.userId
+        const otherUsername = isRequester ? task.helper?.username : task.requester?.username
+        const key = msg.taskId
+        if (!grouped[key] || new Date(msg.createTime) > new Date(grouped[key].createTime)) {
+          grouped[key] = { ...msg, otherUsername, taskTitle: task.title }
+        }
+      }
+    })
+    chatMessages.value = Object.values(grouped).filter(m => m.receiverId === userStore.userId && !m.isRead)
+    
+    userStore.setUnreadCount((notifData.unreadCount || 0) + (msgData || 0))
   } catch (error) {
     console.error('加载通知失败:', error)
   }
@@ -79,8 +127,12 @@ const markAllRead = async () => {
   if (!userStore.userId) return
   try {
     await notificationApi.markRead()
+    chatMessages.value.forEach(m => {
+      messageApi.markRead(m.taskId).catch(() => {})
+    })
     userStore.setUnreadCount(0)
     notifications.value.forEach(n => n.isRead = 1)
+    chatMessages.value = []
   } catch (error) {
     console.error('标记通知失败:', error)
   }
@@ -98,7 +150,48 @@ const goToTaskDetail = (taskId) => {
   router.push(`/task/${taskId}`)
 }
 
-onMounted(loadNotifications)
+const goToChat = (taskId) => {
+  showNotification.value = false
+  router.push(`/chat/${taskId}`)
+}
+
+const handleNewMessage = (msg) => {
+  if (msg.senderId && msg.receiverId && msg.content && msg.receiverId === userStore.userId) {
+    const task = taskCache.value[msg.taskId]
+    if (task) {
+      const isRequester = task.requesterId === userStore.userId
+      const otherUsername = isRequester ? task.helper?.username : task.requester?.username
+      
+      const existingIndex = chatMessages.value.findIndex(m => m.taskId === msg.taskId)
+      if (existingIndex >= 0) {
+        chatMessages.value[existingIndex] = { 
+          ...msg, 
+          otherUsername, 
+          taskTitle: task.title,
+          isRead: 0 
+        }
+      } else {
+        chatMessages.value.push({ 
+          ...msg, 
+          otherUsername, 
+          taskTitle: task.title,
+          isRead: 0 
+        })
+      }
+      
+      userStore.setUnreadCount(userStore.unreadCount + 1)
+    }
+  }
+}
+
+onMounted(() => {
+  loadNotifications()
+  onMessageReceived(handleNewMessage)
+})
+
+onUnmounted(() => {
+  offMessageReceived(handleNewMessage)
+})
 </script>
 
 <template>
@@ -155,29 +248,32 @@ onMounted(loadNotifications)
                 <div v-if="showNotification" class="absolute right-0 mt-3 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-large border border-surface-100 py-2 z-50">
                   <div class="px-4 py-3 border-b border-surface-100 flex items-center justify-between">
                     <h3 class="font-semibold text-surface-900">消息提醒</h3>
-                    <span class="text-xs text-surface-500">{{ notifications.length }} 条</span>
+                    <span class="text-xs text-surface-500">{{ allNotifications.length }} 条</span>
                   </div>
                   <div class="max-h-80 overflow-y-auto">
                     <div
-                      v-for="notif in notifications"
+                      v-for="notif in allNotifications"
                       :key="notif.id"
                       :class="['px-4 py-3 cursor-pointer hover:bg-surface-50 transition-colors', notif.isRead === 0 ? 'bg-[var(--role-accent-soft)]/60' : '']"
-                      @click="notif.taskId ? goToTaskDetail(notif.taskId) : showNotification = false"
+                      @click="notif.type === 'chat' ? goToChat(notif.taskId) : (notif.taskId ? goToTaskDetail(notif.taskId) : showNotification = false)"
                     >
                       <div class="flex items-start gap-3">
                         <div :class="['w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0', notificationTone(notif.type)]">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg v-if="notif.type === 'chat'" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                           </svg>
                         </div>
                         <div class="flex-1 min-w-0">
                           <p class="font-medium text-surface-900 text-sm">{{ notif.title }}</p>
                           <p class="text-xs text-surface-500 mt-0.5 line-clamp-2">{{ notif.content }}</p>
-                          <p class="text-xs text-surface-400 mt-1">{{ notif.createTime }}</p>
+                          <p class="text-xs text-surface-400 mt-1">{{ notif.createTime || notif.time }}</p>
                         </div>
                       </div>
                     </div>
-                    <div v-if="notifications.length === 0" class="px-4 py-8 text-center text-surface-500">
+                    <div v-if="allNotifications.length === 0" class="px-4 py-8 text-center text-surface-500">
                       暂无消息
                     </div>
                   </div>

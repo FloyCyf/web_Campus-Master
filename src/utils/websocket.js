@@ -52,9 +52,26 @@ const connect = () => {
   }
 }
 
+const messageCallbacks = []
+
+export const onMessageReceived = (callback) => {
+  messageCallbacks.push(callback)
+}
+
+export const offMessageReceived = (callback) => {
+  const index = messageCallbacks.indexOf(callback)
+  if (index > -1) messageCallbacks.splice(index, 1)
+}
+
 const handleMessage = (data) => {
   const userStore = useUserStore()
-  
+
+  if (data.senderId && data.receiverId && data.content) {
+    messageCallbacks.forEach(cb => cb(data))
+    userStore.setUnreadCount(userStore.unreadCount + 1)
+    return
+  }
+
   switch (data.type) {
     case 'task_accepted':
       userStore.setUnreadCount(userStore.unreadCount + 1)
